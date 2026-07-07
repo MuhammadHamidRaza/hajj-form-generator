@@ -2,6 +2,7 @@ import os
 import io
 import zipfile
 import urllib.request
+import concurrent.futures
 from typing import Dict, Optional, List, Any
 from flask import Flask, render_template, request, jsonify, send_file
 from config import (
@@ -193,20 +194,21 @@ def generate_bulk_pdfs():
     if records is None:
         return jsonify({"success": False, "message": "No Excel file loaded."}), 400
 
-    generated_files: List[str] = []
-    failed: List[int] = []
+    pdf_filenames: List[Optional[str]] = [None] * len(serials)
 
-    for serial in serials:
+    def process_one(i: int, serial: int) -> None:
         applicant: Optional[Dict[str, str]] = get_applicant(records, serial)
         if applicant is None:
-            failed.append(serial)
-            continue
-        pdf_fn: Optional[str] = generate_pdf(applicant, serial_number=serial)
-        if pdf_fn:
-            generated_files.append(pdf_fn)
-        else:
-            failed.append(serial)
+            return
+        pdf_filenames[i] = generate_pdf(applicant, serial_number=serial)
 
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        futures = []
+        for i, serial in enumerate(serials):
+            futures.append(executor.submit(process_one, i, serial))
+        concurrent.futures.wait(futures)
+
+    generated_files: List[str] = [fn for fn in pdf_filenames if fn]
     if not generated_files:
         return jsonify(
             {"success": False, "message": "No PDFs could be generated."}
