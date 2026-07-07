@@ -2,7 +2,7 @@ import os
 import io
 import zipfile
 import urllib.request
-import concurrent.futures
+import traceback
 from typing import Dict, Optional, List, Any
 from flask import Flask, render_template, request, jsonify, send_file
 from config import (
@@ -194,32 +194,27 @@ def generate_bulk_pdfs():
     if records is None:
         return jsonify({"success": False, "message": "No Excel file loaded."}), 400
 
-    pdf_filenames: List[Optional[str]] = [None] * len(serials)
+    generated_files: List[str] = []
+    failed: List[int] = []
 
-    def process_one(i: int, serial: int) -> None:
-        with app.app_context():
-            try:
-                applicant: Optional[Dict[str, str]] = get_applicant(records, serial)
-                if applicant is None:
-                    print(f"[BULK] Serial {serial}: applicant not found")
-                    return
-                pdf_filenames[i] = generate_pdf(applicant, serial_number=serial)
-            except Exception as e:
-                print(f"[BULK] Serial {serial}: {e}")
-                traceback.print_exc()
+    for serial in serials:
+        applicant: Optional[Dict[str, str]] = get_applicant(records, serial)
+        if applicant is None:
+            failed.append(serial)
+            continue
+        pdf_fn: Optional[str] = generate_pdf(applicant, serial_number=serial)
+        if pdf_fn:
+            generated_files.append(pdf_fn)
+        else:
+            failed.append(serial)
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-        futures = []
-        for i, serial in enumerate(serials):
-            futures.append(executor.submit(process_one, i, serial))
-        for f in concurrent.futures.as_completed(futures):
-            f.result()  # surface exceptions
-
-    generated_files: List[str] = [fn for fn in pdf_filenames if fn]
     if not generated_files:
-        return jsonify(
-            {"success": False, "message": "No PDFs could be generated."}
-        ), 500
+        err_msg = "No PDFs could be generated."
+        if failed:
+            err_msg += f" Failed serials: {failed[:20]}"
+            if len(failed) > 20:
+                err_msg += f" ... and {len(failed)-20} more"
+        return jsonify({"success": False, "message": err_msg}), 500
 
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:

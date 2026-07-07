@@ -13,6 +13,12 @@ BROWSER_ARGS = [
     "--disable-setuid-sandbox",
     "--disable-dev-shm-usage",
     "--disable-gpu",
+    "--disable-extensions",
+    "--disable-sync",
+    "--no-first-run",
+    "--single-process",
+    "--disable-background-networking",
+    "--disable-component-update",
 ]
 
 
