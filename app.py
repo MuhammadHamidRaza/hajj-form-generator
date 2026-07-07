@@ -36,6 +36,19 @@ EXCEL_SOURCE_URL: str = (
 )
 
 
+def _warmup() -> None:
+    try:
+        print("[WARMUP] Pre-warming Playwright browser...")
+        from utils.pdf_generator import _get_page
+        _get_page()
+        print("[WARMUP] Browser ready.")
+    except Exception as e:
+        print(f"[WARMUP] Browser warmup failed (non-fatal): {e}")
+
+
+_warmup()
+
+
 def fetch_excel_from_url() -> bool:
     try:
         req = urllib.request.Request(
