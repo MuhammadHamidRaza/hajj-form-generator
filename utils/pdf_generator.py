@@ -13,23 +13,16 @@ BROWSER_ARGS = [
     "--disable-setuid-sandbox",
     "--disable-dev-shm-usage",
     "--disable-gpu",
-    "--disable-extensions",
-    "--disable-sync",
-    "--no-first-run",
-    "--single-process",
-    "--disable-background-networking",
-    "--disable-component-update",
 ]
 
 
-def _get_page():
+def _get_browser():
     tid = threading.get_ident()
     if tid not in _thread_playwright:
         pw = sync_playwright().start()
         browser = pw.chromium.launch(headless=True, args=BROWSER_ARGS)
-        page = browser.new_page()
-        _thread_playwright[tid] = (pw, browser, page)
-    return _thread_playwright[tid][2]
+        _thread_playwright[tid] = (pw, browser)
+    return _thread_playwright[tid][1]
 
 
 def generate_pdf(
@@ -69,25 +62,29 @@ def generate_pdf(
             section_fields=SECTION_FIELDS,
         )
 
-        page = _get_page()
+        browser = _get_browser()
+        page = browser.new_page()
         try:
-            page.set_content(html_content, wait_until="load", timeout=30000)
-        except PlaywrightTimeout:
-            page.set_content(html_content, wait_until="commit", timeout=15000)
+            try:
+                page.set_content(html_content, wait_until="load", timeout=30000)
+            except PlaywrightTimeout:
+                page.set_content(html_content, wait_until="commit", timeout=15000)
 
-        page.pdf(
-            path=output_path,
-            format="A4",
-            margin={
-                "top": PDF_CONFIG["margin_top"],
-                "bottom": PDF_CONFIG["margin_bottom"],
-                "left": PDF_CONFIG["margin_left"],
-                "right": PDF_CONFIG["margin_right"],
-            },
-            print_background=PDF_CONFIG["print_background"],
-            scale=PDF_CONFIG["scale"],
-            display_header_footer=False,
-        )
+            page.pdf(
+                path=output_path,
+                format="A4",
+                margin={
+                    "top": PDF_CONFIG["margin_top"],
+                    "bottom": PDF_CONFIG["margin_bottom"],
+                    "left": PDF_CONFIG["margin_left"],
+                    "right": PDF_CONFIG["margin_right"],
+                },
+                print_background=PDF_CONFIG["print_background"],
+                scale=PDF_CONFIG["scale"],
+                display_header_footer=False,
+            )
+        finally:
+            page.close()
 
         if os.path.exists(output_path):
             return sanitized_filename
