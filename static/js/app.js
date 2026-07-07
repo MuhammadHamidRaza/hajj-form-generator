@@ -19,6 +19,9 @@ document.addEventListener('DOMContentLoaded', function () {
         spinnerText: document.getElementById('spinner-text'),
         downloadArea: document.getElementById('download-area'),
         downloadLink: document.getElementById('download-link'),
+        progressArea: document.getElementById('progress-area'),
+        progressFill: document.getElementById('progress-bar-fill'),
+        progressText: document.getElementById('progress-text'),
         statusBadge: document.getElementById('status-badge'),
         allCount: document.getElementById('all-count'),
         modeTabs: document.querySelectorAll('.mode-tab'),
@@ -53,6 +56,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function hideDownload() {
         elements.downloadArea.classList.remove('show');
+    }
+
+    function showProgress(current, total) {
+        var pct = total > 0 ? Math.round((current / total) * 100) : 0;
+        elements.progressFill.style.width = pct + '%';
+        elements.progressText.textContent = 'Generating PDFs... ' + current + '/' + total;
+        elements.progressArea.classList.add('show');
+    }
+
+    function hideProgress() {
+        elements.progressArea.classList.remove('show');
+        elements.progressFill.style.width = '0%';
     }
 
     function updateStatusBadge(loaded, total) {
@@ -157,35 +172,59 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!serials.length) { showStatus('warning', 'fas fa-exclamation-triangle', 'No valid serials.'); return; }
         hideStatus();
         hideDownload();
-        showSpinner('Generating ' + serials.length + ' PDF' + (serials.length > 1 ? 's' : '') + '...');
+        hideProgress();
+        showSpinner('Starting generation of ' + serials.length + ' PDF' + (serials.length > 1 ? 's' : '') + '...');
 
         fetch('/generate-bulk', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ serials: serials }),
         })
-            .then(function (r) {
-                if (r.headers.get('content-type') === 'application/json') {
-                    return r.json().then(function (d) { return { json: d, blob: null }; });
-                }
-                return r.blob().then(function (b) { return { json: null, blob: b }; });
-            })
-            .then(function (r) {
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
                 hideSpinner();
-                if (r.json) {
-                    showStatus('error', 'fas fa-exclamation-circle', r.json.message || 'Failed.');
+                if (!data.success) {
+                    showStatus('error', 'fas fa-exclamation-circle', data.message || 'Failed to start.');
                     return;
                 }
-                var url = URL.createObjectURL(r.blob);
-                var a = document.createElement('a');
-                a.href = url;
-                a.download = 'hajj_forms.zip';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                showStatus('success', 'fas fa-check-circle', serials.length + ' PDF(s) downloaded successfully.');
+                var taskId = data.task_id;
+                var total = data.total;
+                showProgress(0, total);
+                pollTask(taskId, total);
             })
-            .catch(function () { hideSpinner(); showStatus('error', 'fas fa-exclamation-circle', 'Failed to generate PDFs.'); });
+            .catch(function () { hideSpinner(); showStatus('error', 'fas fa-exclamation-circle', 'Failed to start.'); });
+    }
+
+    function pollTask(taskId, total) {
+        fetch('/task-status/' + taskId)
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data.success) {
+                    hideProgress();
+                    showStatus('error', 'fas fa-exclamation-circle', data.message || 'Task failed.');
+                    return;
+                }
+                showProgress(data.progress, total);
+                if (data.status === 'done') {
+                    hideProgress();
+                    if (data.download_url) {
+                        var a = document.createElement('a');
+                        a.href = data.download_url;
+                        a.download = 'hajj_forms.zip';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                    }
+                    showStatus('success', 'fas fa-check-circle', total + ' PDF(s) downloaded successfully.');
+                } else if (data.status === 'error') {
+                    hideProgress();
+                    showStatus('error', 'fas fa-exclamation-circle', data.message || 'Generation failed.');
+                } else {
+                    setTimeout(function () { pollTask(taskId, total); }, 800);
+                }
+            })
+            .catch(function () {
+                setTimeout(function () { pollTask(taskId, total); }, 1000);
+            });
     }
 
     elements.generateAllBtn.addEventListener('click', function () {

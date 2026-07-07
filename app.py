@@ -1,8 +1,10 @@
 import os
 import io
+import uuid
 import zipfile
 import urllib.request
 import traceback
+import threading
 from typing import Dict, Optional, List, Any
 from flask import Flask, render_template, request, jsonify, send_file
 from config import (
@@ -24,6 +26,9 @@ app.config["SECRET_KEY"] = SECRET_KEY
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(GENERATED_FOLDER, exist_ok=True)
+
+TASKS: Dict[str, dict] = {}
+TASKS_LOCK = threading.Lock()
 
 EXCEL_SOURCE_URL: str = (
     "https://docs.google.com/spreadsheets/d/"
@@ -180,6 +185,63 @@ def download_pdf(filename: str):
     return send_file(filepath, as_attachment=True, mimetype="application/pdf")
 
 
+def _background_generate(task_id: str) -> None:
+    task = TASKS.get(task_id)
+    if not task:
+        return
+
+    with app.app_context():
+        records: Optional[List[Dict[str, str]]] = load_excel_data()
+        if records is None:
+            task["status"] = "error"
+            task["message"] = "No Excel data loaded."
+            return
+
+        serials: List[int] = task["serials"]
+        generated_files: List[str] = []
+        failed: List[int] = []
+
+        for i, serial in enumerate(serials):
+            task["progress"] = i
+            task["status"] = "processing"
+            applicant: Optional[Dict[str, str]] = get_applicant(records, serial)
+            if applicant is None:
+                failed.append(serial)
+                continue
+            pdf_fn: Optional[str] = generate_pdf(applicant, serial_number=serial)
+            if pdf_fn:
+                generated_files.append(pdf_fn)
+            else:
+                failed.append(serial)
+
+        if not generated_files:
+            task["status"] = "error"
+            err_msg = "No PDFs could be generated."
+            if failed:
+                err_msg += f" Failed serials: {failed[:20]}"
+                if len(failed) > 20:
+                    err_msg += f" ... and {len(failed)-20} more"
+            task["message"] = err_msg
+            return
+
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+            for fn in generated_files:
+                fp = os.path.join(GENERATED_FOLDER, fn)
+                if os.path.exists(fp):
+                    zf.write(fp, arcname=fn)
+
+        zip_filename = f"task_{task_id}.zip"
+        zip_path = os.path.join(GENERATED_FOLDER, zip_filename)
+        with open(zip_path, "wb") as f:
+            f.write(zip_buffer.getvalue())
+
+        task["status"] = "done"
+        task["progress"] = len(serials)
+        task["download_url"] = f"/download-task/{zip_filename}"
+        task["zip_filename"] = zip_filename
+
+
 @app.route("/generate-bulk", methods=["POST"])
 def generate_bulk_pdfs():
     data: Dict[str, Any] = request.get_json()
@@ -190,47 +252,60 @@ def generate_bulk_pdfs():
     if not serials:
         return jsonify({"success": False, "message": "No serials provided."}), 400
 
-    records: Optional[List[Dict[str, str]]] = load_excel_data()
-    if records is None:
-        return jsonify({"success": False, "message": "No Excel file loaded."}), 400
+    task_id: str = str(uuid.uuid4())
+    task: Dict[str, Any] = {
+        "id": task_id,
+        "status": "queued",
+        "progress": 0,
+        "total": len(serials),
+        "serials": serials,
+        "download_url": None,
+        "zip_filename": None,
+        "message": None,
+    }
+    with TASKS_LOCK:
+        TASKS[task_id] = task
 
-    generated_files: List[str] = []
-    failed: List[int] = []
+    thread = threading.Thread(
+        target=_background_generate, args=(task_id,), daemon=True
+    )
+    thread.start()
 
-    for serial in serials:
-        applicant: Optional[Dict[str, str]] = get_applicant(records, serial)
-        if applicant is None:
-            failed.append(serial)
-            continue
-        pdf_fn: Optional[str] = generate_pdf(applicant, serial_number=serial)
-        if pdf_fn:
-            generated_files.append(pdf_fn)
-        else:
-            failed.append(serial)
+    return jsonify(
+        {
+            "success": True,
+            "async": True,
+            "task_id": task_id,
+            "total": len(serials),
+        }
+    )
 
-    if not generated_files:
-        err_msg = "No PDFs could be generated."
-        if failed:
-            err_msg += f" Failed serials: {failed[:20]}"
-            if len(failed) > 20:
-                err_msg += f" ... and {len(failed)-20} more"
-        return jsonify({"success": False, "message": err_msg}), 500
 
-    zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-        for fn in generated_files:
-            fp = os.path.join(GENERATED_FOLDER, fn)
-            if os.path.exists(fp):
-                zf.write(fp, arcname=fn)
+@app.route("/task-status/<task_id>")
+def task_status(task_id: str):
+    with TASKS_LOCK:
+        task: Optional[Dict[str, Any]] = TASKS.get(task_id)
+    if not task:
+        return jsonify({"success": False, "message": "Task not found."}), 404
+    return jsonify(
+        {
+            "success": True,
+            "status": task["status"],
+            "progress": task["progress"],
+            "total": task["total"],
+            "download_url": task.get("download_url"),
+            "message": task.get("message"),
+        }
+    )
 
-    zip_buffer.seek(0)
-    zip_name: str = f"hajj_forms_{serials[0]}_to_{serials[-1]}.zip"
 
+@app.route("/download-task/<filename>")
+def download_task_zip(filename: str):
+    filepath: str = os.path.join(GENERATED_FOLDER, filename)
+    if not os.path.exists(filepath):
+        return jsonify({"success": False, "message": "File not found."}), 404
     return send_file(
-        zip_buffer,
-        as_attachment=True,
-        download_name=zip_name,
-        mimetype="application/zip",
+        filepath, as_attachment=True, download_name="hajj_forms.zip", mimetype="application/zip"
     )
 
 
