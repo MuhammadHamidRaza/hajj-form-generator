@@ -66,10 +66,11 @@ def generate_pdf(
             full_name = "Applicant"
 
         passport: str = applicant.get("Passport No.", "")
+        serial_padded: str = str(serial_number).zfill(3)
         if passport:
-            filename: str = f"{full_name}_{passport}.pdf"
+            filename: str = f"{serial_padded}_{full_name}_{passport}.pdf"
         else:
-            filename: str = f"{full_name}.pdf"
+            filename: str = f"{serial_padded}_{full_name}.pdf"
 
         sanitized_filename: str = "".join(
             c for c in filename if c.isalnum() or c in "._- "
