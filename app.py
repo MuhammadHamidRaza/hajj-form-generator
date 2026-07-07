@@ -202,7 +202,7 @@ def generate_bulk_pdfs():
             return
         pdf_filenames[i] = generate_pdf(applicant, serial_number=serial)
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         futures = []
         for i, serial in enumerate(serials):
             futures.append(executor.submit(process_one, i, serial))
