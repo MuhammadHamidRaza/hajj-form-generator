@@ -197,14 +197,16 @@ def generate_bulk_pdfs():
     pdf_filenames: List[Optional[str]] = [None] * len(serials)
 
     def process_one(i: int, serial: int) -> None:
-        try:
-            applicant: Optional[Dict[str, str]] = get_applicant(records, serial)
-            if applicant is None:
-                print(f"[BULK] Serial {serial}: applicant not found")
-                return
-            pdf_filenames[i] = generate_pdf(applicant, serial_number=serial)
-        except Exception as e:
-            print(f"[BULK] Serial {serial}: {e}")
+        with app.app_context():
+            try:
+                applicant: Optional[Dict[str, str]] = get_applicant(records, serial)
+                if applicant is None:
+                    print(f"[BULK] Serial {serial}: applicant not found")
+                    return
+                pdf_filenames[i] = generate_pdf(applicant, serial_number=serial)
+            except Exception as e:
+                print(f"[BULK] Serial {serial}: {e}")
+                traceback.print_exc()
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         futures = []
