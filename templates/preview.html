@@ -1,0 +1,26 @@
+{% macro render_field(field_name, value) %}
+<div class="preview-item">
+    <span class="field-label">
+        {{ field_labels[field_name]['en'] }}
+        <span class="urdu-label">{{ field_labels[field_name]['ur'] }}</span>
+    </span>
+    <span class="field-value">{{ value }}</span>
+</div>
+{% endmacro %}
+
+{% for section_key, fields in section_fields.items() %}
+<div class="preview-section">
+    <div class="preview-section-title">
+        <i class="fas fa-circle"></i>
+        {{ section_labels[section_key]['en'] }}
+        <span class="urdu-label"> &mdash; {{ section_labels[section_key]['ur'] }}</span>
+    </div>
+    <div class="preview-grid">
+        {% for field in fields %}
+            {% if field in applicant %}
+                {{ render_field(field, applicant[field]) }}
+            {% endif %}
+        {% endfor %}
+    </div>
+</div>
+{% endfor %}
