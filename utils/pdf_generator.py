@@ -16,13 +16,14 @@ BROWSER_ARGS = [
 ]
 
 
-def _get_browser():
+def _get_browser_page():
     tid = threading.get_ident()
     if tid not in _thread_playwright:
         pw = sync_playwright().start()
         browser = pw.chromium.launch(headless=True, args=BROWSER_ARGS)
-        _thread_playwright[tid] = (pw, browser)
-    return _thread_playwright[tid][1]
+        page = browser.new_page()
+        _thread_playwright[tid] = (pw, browser, page)
+    return _thread_playwright[tid][2]
 
 
 def generate_pdf(
@@ -62,29 +63,25 @@ def generate_pdf(
             section_fields=SECTION_FIELDS,
         )
 
-        browser = _get_browser()
-        page = browser.new_page()
+        page = _get_browser_page()
         try:
-            try:
-                page.set_content(html_content, wait_until="load", timeout=30000)
-            except PlaywrightTimeout:
-                page.set_content(html_content, wait_until="commit", timeout=15000)
+            page.set_content(html_content, wait_until="load", timeout=30000)
+        except PlaywrightTimeout:
+            page.set_content(html_content, wait_until="commit", timeout=15000)
 
-            page.pdf(
-                path=output_path,
-                format="A4",
-                margin={
-                    "top": PDF_CONFIG["margin_top"],
-                    "bottom": PDF_CONFIG["margin_bottom"],
-                    "left": PDF_CONFIG["margin_left"],
-                    "right": PDF_CONFIG["margin_right"],
-                },
-                print_background=PDF_CONFIG["print_background"],
-                scale=PDF_CONFIG["scale"],
-                display_header_footer=False,
-            )
-        finally:
-            page.close()
+        page.pdf(
+            path=output_path,
+            format="A4",
+            margin={
+                "top": PDF_CONFIG["margin_top"],
+                "bottom": PDF_CONFIG["margin_bottom"],
+                "left": PDF_CONFIG["margin_left"],
+                "right": PDF_CONFIG["margin_right"],
+            },
+            print_background=PDF_CONFIG["print_background"],
+            scale=PDF_CONFIG["scale"],
+            display_header_footer=False,
+        )
 
         if os.path.exists(output_path):
             return sanitized_filename

@@ -39,8 +39,8 @@ EXCEL_SOURCE_URL: str = (
 def _warmup() -> None:
     try:
         print("[WARMUP] Pre-warming Playwright browser...")
-        from utils.pdf_generator import _get_browser
-        _get_browser()
+        from utils.pdf_generator import _get_browser_page
+        _get_browser_page()
         print("[WARMUP] Browser ready.")
     except Exception as e:
         print(f"[WARMUP] Browser warmup failed (non-fatal): {e}")
