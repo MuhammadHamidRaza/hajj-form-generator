@@ -16,14 +16,41 @@ BROWSER_ARGS = [
 ]
 
 
+def _clear_browser_tid(tid):
+    entry = _thread_playwright.pop(tid, None)
+    if entry:
+        pw, browser, page = entry
+        try:
+            page.close()
+        except Exception:
+            pass
+        try:
+            browser.close()
+        except Exception:
+            pass
+        try:
+            pw.stop()
+        except Exception:
+            pass
+
+
 def _get_browser_page():
     tid = threading.get_ident()
-    if tid not in _thread_playwright:
-        pw = sync_playwright().start()
-        browser = pw.chromium.launch(headless=True, args=BROWSER_ARGS)
-        page = browser.new_page()
-        _thread_playwright[tid] = (pw, browser, page)
-    return _thread_playwright[tid][2]
+    entry = _thread_playwright.get(tid)
+    if entry:
+        pw, browser, page = entry
+        try:
+            page.title()
+            return page
+        except Exception:
+            print(f"[PLAYWRIGHT] Page/browser disconnected, recreating...")
+            _clear_browser_tid(tid)
+
+    pw = sync_playwright().start()
+    browser = pw.chromium.launch(headless=True, args=BROWSER_ARGS)
+    page = browser.new_page()
+    _thread_playwright[tid] = (pw, browser, page)
+    return page
 
 
 def generate_pdf(
@@ -64,10 +91,21 @@ def generate_pdf(
         )
 
         page = _get_browser_page()
-        try:
-            page.set_content(html_content, wait_until="load", timeout=30000)
-        except PlaywrightTimeout:
-            page.set_content(html_content, wait_until="commit", timeout=15000)
+        for attempt in range(2):
+            try:
+                page.set_content(html_content, wait_until="load", timeout=30000)
+                break
+            except PlaywrightTimeout:
+                page.set_content(html_content, wait_until="commit", timeout=15000)
+                break
+            except Exception:
+                if attempt == 0:
+                    print(f"[PLAYWRIGHT] Page error on attempt {attempt}, recreating browser...")
+                    tid = threading.get_ident()
+                    _clear_browser_tid(tid)
+                    page = _get_browser_page()
+                else:
+                    raise
 
         page.pdf(
             path=output_path,
