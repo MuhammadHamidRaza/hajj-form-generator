@@ -58,7 +58,7 @@ FIELD_LABELS: dict = {
     "Nominee CNIC No.": {"en": "Nominee CNIC Number", "ur": "\u0646\u0627\u0645\u0632\u062f \u0634\u062e\u0635 \u06a9\u0627 \u0634\u0646\u0627\u062e\u062a\u06cc \u06a9\u0627\u0631\u0688 \u0646\u0645\u0628\u0631"},
     "Relationship with Applicant": {"en": "Relationship with Applicant", "ur": "\u062f\u0631\u062e\u0648\u0627\u0633\u062a \u06af\u0632\u0627\u0631 \u0633\u06d2 \u0631\u0634\u062a\u06c1"},
     "Nominee Mobile No.": {"en": "Nominee Mobile Number", "ur": "\u0646\u0627\u0645\u0632\u062f \u0634\u062e\u0635 \u06a9\u0627 \u0645\u0648\u0628\u0627\u0626\u0644 \u0646\u0645\u0628\u0631"},
-    "Bank Account No. (IBAN)": {"en": "Bank Account (IBAN)", "ur": "\u0628\u06cc\u0646\u06a9 \u0627\u06a9\u0627\u0624\u0646\u0679 \u0646\u0645\u0628\u0631 (IBAN)"},
+    "Bank Account No. (IBAN)": {"en": "Bank Account (IBAN)", "ur": "\u0628\u06cc\u0646\u06a9 \u0627\u06a9\u0627\u0624\u0646\u0679 (IBAN)"},
     "Account Title": {"en": "Account Title", "ur": "\u0627\u06a9\u0627\u0624\u0646\u0679 \u06a9\u0627 \u0639\u0646\u0648\u0627\u0646"},
 }
 
