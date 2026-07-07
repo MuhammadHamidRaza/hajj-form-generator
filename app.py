@@ -1,4 +1,6 @@
 import os
+import io
+import zipfile
 import urllib.request
 from typing import Dict, Optional, List, Any
 from flask import Flask, render_template, request, jsonify, send_file
@@ -175,6 +177,57 @@ def download_pdf(filename: str):
     if not os.path.exists(filepath):
         return jsonify({"success": False, "message": "File not found."}), 404
     return send_file(filepath, as_attachment=True, mimetype="application/pdf")
+
+
+@app.route("/generate-bulk", methods=["POST"])
+def generate_bulk_pdfs():
+    data: Dict[str, Any] = request.get_json()
+    if not data:
+        return jsonify({"success": False, "message": "Invalid request."}), 400
+
+    serials: List[int] = data.get("serials", [])
+    if not serials:
+        return jsonify({"success": False, "message": "No serials provided."}), 400
+
+    records: Optional[List[Dict[str, str]]] = load_excel_data()
+    if records is None:
+        return jsonify({"success": False, "message": "No Excel file loaded."}), 400
+
+    generated_files: List[str] = []
+    failed: List[int] = []
+
+    for serial in serials:
+        applicant: Optional[Dict[str, str]] = get_applicant(records, serial)
+        if applicant is None:
+            failed.append(serial)
+            continue
+        pdf_fn: Optional[str] = generate_pdf(applicant, serial_number=serial)
+        if pdf_fn:
+            generated_files.append(pdf_fn)
+        else:
+            failed.append(serial)
+
+    if not generated_files:
+        return jsonify(
+            {"success": False, "message": "No PDFs could be generated."}
+        ), 500
+
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for fn in generated_files:
+            fp = os.path.join(GENERATED_FOLDER, fn)
+            if os.path.exists(fp):
+                zf.write(fp, arcname=fn)
+
+    zip_buffer.seek(0)
+    zip_name: str = f"hajj_forms_{serials[0]}_to_{serials[-1]}.zip"
+
+    return send_file(
+        zip_buffer,
+        as_attachment=True,
+        download_name=zip_name,
+        mimetype="application/zip",
+    )
 
 
 @app.route("/status")

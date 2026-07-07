@@ -31,7 +31,7 @@
         .page {
             width: 210mm;
             min-height: 297mm;
-            padding: 15mm 12mm 15mm 12mm;
+            padding: 10mm 10mm 8mm 10mm;
             position: relative;
             background: #fff;
         }
@@ -40,60 +40,60 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding-bottom: 16px;
-            border-bottom: 3px solid #1a56db;
-            margin-bottom: 20px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #1a56db;
+            margin-bottom: 10px;
         }
 
-        .header-left { display: flex; align-items: center; gap: 14px; }
+        .header-left { display: flex; align-items: center; gap: 10px; }
 
         .header-icon {
-            width: 52px; height: 52px;
+            width: 38px; height: 38px;
             background: linear-gradient(135deg, #1a56db, #3b82f6);
-            border-radius: 12px;
+            border-radius: 8px;
             display: flex; align-items: center; justify-content: center;
-            color: #fff; font-size: 24px; flex-shrink: 0;
+            color: #fff; font-size: 17px; flex-shrink: 0;
         }
 
-        .header-title h1 { font-size: 20px; font-weight: 800; color: #1a56db; letter-spacing: -0.3px; line-height: 1.2; }
-        .header-title p { font-size: 11px; color: #6b7280; font-weight: 400; letter-spacing: 0.2px; }
+        .header-title h1 { font-size: 16px; font-weight: 800; color: #1a56db; letter-spacing: -0.3px; line-height: 1.1; }
+        .header-title p { font-size: 9px; color: #6b7280; font-weight: 400; }
 
         .header-right { text-align: right; }
 
         .header-right .serial-badge {
             display: inline-block;
             background: #eff6ff; color: #1a56db;
-            padding: 6px 16px; border-radius: 50px;
-            font-size: 13px; font-weight: 600;
+            padding: 4px 12px; border-radius: 50px;
+            font-size: 11px; font-weight: 600;
         }
 
-        .section { margin-bottom: 18px; page-break-inside: avoid; }
+        .section { margin-bottom: 8px; page-break-inside: avoid; }
         .section:last-child { margin-bottom: 0; }
 
         .section-title {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 10px 16px;
+            gap: 6px;
+            padding: 5px 10px;
             background: linear-gradient(135deg, #eff6ff, #f0f9ff);
-            border-radius: 8px;
-            margin-bottom: 12px;
-            border-left: 4px solid #1a56db;
+            border-radius: 5px;
+            margin-bottom: 6px;
+            border-left: 3px solid #1a56db;
         }
 
         .section-title .title-icon {
-            width: 28px; height: 28px;
-            background: #1a56db; border-radius: 6px;
+            width: 20px; height: 20px;
+            background: #1a56db; border-radius: 4px;
             display: flex; align-items: center; justify-content: center;
-            color: #fff; font-size: 12px; flex-shrink: 0;
+            color: #fff; font-size: 9px; flex-shrink: 0;
         }
 
         .section-title .title-text {
-            font-size: 14px; font-weight: 700; color: #1e3a8a;
+            font-size: 12px; font-weight: 700; color: #1e3a8a;
         }
 
         .section-title .title-urdu {
-            font-size: 12px; font-weight: 500; color: #6b7280;
+            font-size: 10px; font-weight: 500; color: #6b7280;
             margin-left: auto;
             white-space: nowrap;
         }
@@ -106,16 +106,16 @@
 
         .fields-table tr {
             border-bottom: 1px solid #f3f4f6;
-            height: 28px;
+            height: 20px;
         }
 
         .fields-table tr:last-child { border-bottom: none; }
 
         .fields-table td {
-            padding: 4px 12px;
+            padding: 2px 8px;
             vertical-align: middle;
-            font-size: 12px;
-            height: 28px;
+            font-size: 10px;
+            height: 20px;
         }
 
         .fields-table .label-cell {
@@ -129,18 +129,18 @@
         }
 
         .fields-table .label-cell .label-en {
-            font-size: 11px;
+            font-size: 9px;
             font-weight: 600;
             color: #4b5563;
             display: inline;
         }
 
         .fields-table .label-cell .label-ur {
-            font-size: 9px;
+            font-size: 8px;
             font-weight: 500;
             color: #9ca3af;
             display: inline;
-            margin-left: 4px;
+            margin-left: 3px;
             white-space: nowrap;
         }
 
@@ -149,6 +149,7 @@
             font-weight: 500;
             color: #111827;
             word-break: break-word;
+            font-size: 10px;
         }
 
         .fields-table .value-cell:empty::before {
@@ -158,13 +159,13 @@
 
         .footer-pdf {
             position: absolute;
-            bottom: 10mm;
-            left: 12mm;
-            right: 12mm;
+            bottom: 6mm;
+            left: 10mm;
+            right: 10mm;
             text-align: center;
-            padding-top: 12px;
+            padding-top: 6px;
             border-top: 1px solid #e5e7eb;
-            font-size: 9px;
+            font-size: 7px;
             color: #9ca3af;
         }
 
@@ -176,27 +177,16 @@
 
         .footer-pdf .footer-line span { font-weight: 400; }
 
-        .watermark {
-            position: fixed;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%) rotate(-30deg);
-            font-size: 120px; font-weight: 800;
-            color: rgba(26, 86, 219, 0.03);
-            pointer-events: none; z-index: 0;
-            letter-spacing: 10px; white-space: nowrap;
-        }
-
         .content-wrapper { position: relative; z-index: 1; }
 
         @media print {
             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .page { padding: 15mm 12mm 20mm 12mm; }
+            .page { padding: 10mm 10mm 12mm 10mm; }
         }
     </style>
 </head>
 <body>
     <div class="page">
-        <div class="watermark">HAJJ</div>
         <div class="content-wrapper">
 
             <div class="header">

@@ -220,6 +220,51 @@ body.urdu-fonts-loaded {
     box-shadow: var(--shadow-xl);
 }
 
+/* ===== Mode Tabs ===== */
+.mode-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 24px;
+    background: var(--gray-100);
+    border-radius: var(--radius);
+    padding: 4px;
+}
+
+.mode-tab {
+    flex: 1;
+    padding: 10px 16px;
+    border: none;
+    background: transparent;
+    border-radius: calc(var(--radius) - 4px);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gray-500);
+    cursor: pointer;
+    transition: var(--transition);
+    font-family: inherit;
+}
+
+.mode-tab:hover {
+    color: var(--gray-700);
+    background: rgba(255,255,255,0.5);
+}
+
+.mode-tab.active {
+    background: var(--white);
+    color: var(--primary);
+    font-weight: 600;
+    box-shadow: var(--shadow-sm);
+}
+
+.mode-panel {
+    display: none;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.mode-panel.active {
+    display: block;
+}
+
 /* ===== Form ===== */
 .input-group {
     margin-bottom: 24px;
