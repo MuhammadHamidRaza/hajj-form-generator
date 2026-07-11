@@ -396,5 +396,83 @@ document.addEventListener('DOMContentLoaded', function () {
                 triggerBulkDownload(serials, 'family');
             }
         }
+
+        // ===== Live Search (PDF from live results) =====
+        var liveGenBtn = e.target.closest('.live-generate');
+        if (liveGenBtn) {
+            var serial = parseInt(liveGenBtn.dataset.serial, 10);
+            if (!isNaN(serial)) {
+                hideStatus();
+                hideDownload();
+                showSpinner('Generating PDF...');
+                fetch('/generate', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ serial_number: serial }),
+                })
+                    .then(function (r) { return r.json().then(function (d) { return { status: r.status, data: d }; }); })
+                    .then(function (r) {
+                        hideSpinner();
+                        if (r.data.success) {
+                            showStatus('success', 'fas fa-check-circle', r.data.message);
+                            showDownload(r.data.filename);
+                        } else {
+                            showStatus('error', 'fas fa-exclamation-circle', r.data.message);
+                        }
+                    })
+                    .catch(function () { hideSpinner(); showStatus('error', 'fas fa-exclamation-circle', 'Failed.'); });
+            }
+        }
+    });
+
+    // ===== Live CNIC Search =====
+    var liveInput = document.getElementById('live-cnic');
+    var liveResults = document.getElementById('live-results');
+    var liveTimer = null;
+
+    function renderLiveResults(data) {
+        if (!data.count) {
+            liveResults.innerHTML = '<div class="live-results-placeholder">No matching applicants found.</div>';
+            return;
+        }
+        var html = '<div class="live-table-wrapper"><table class="live-table"><thead><tr><th>#</th><th>Serial</th><th>Name</th><th>Family #</th><th>CNIC</th><th>Action</th></tr></thead><tbody>';
+        data.results.forEach(function (r, idx) {
+            var a = r.applicant;
+            var name = (a['Given Name of Applicant'] || '') + ' ' + (a['Surname of Applicant'] || '');
+            html += '<tr>';
+            html += '<td>' + (idx + 1) + '</td>';
+            html += '<td>' + r.serial_number + '</td>';
+            html += '<td>' + name.trim() + '</td>';
+            html += '<td>' + (a['Family Number'] || '—') + '</td>';
+            html += '<td>' + (a['CNIC No.'] || '—') + '</td>';
+            html += '<td><button class="btn btn-sm btn-primary live-generate" data-serial="' + r.serial_number + '"><i class="fas fa-file-pdf"></i> PDF</button></td>';
+            html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+        html += '<p class="live-results-count">Showing ' + data.count + ' result' + (data.count > 1 ? 's' : '') + '</p>';
+        liveResults.innerHTML = html;
+    }
+
+    function doLiveSearch() {
+        var q = liveInput.value.trim();
+        if (!q) {
+            liveResults.innerHTML = '<div class="live-results-placeholder">Start typing a CNIC number to see results...</div>';
+            return;
+        }
+        fetch('/search-cnic', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cnic: q, mode: 'own', partial: true }),
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    renderLiveResults(data);
+                }
+            })
+            .catch(function () {});
+    }
+
+    liveInput.addEventListener('input', function () {
+        if (liveTimer) clearTimeout(liveTimer);
+        liveTimer = setTimeout(doLiveSearch, 300);
     });
 });

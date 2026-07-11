@@ -51,6 +51,7 @@
                     <button class="mode-tab" data-mode="range">Range</button>
                     <button class="mode-tab" data-mode="custom">Custom</button>
                     <button class="mode-tab" data-mode="cnic">CNIC</button>
+                    <button class="mode-tab" data-mode="live">Live</button>
                 </div>
 
                 <div id="mode-single" class="mode-panel active">
@@ -102,6 +103,20 @@
                         <p class="label-hint" style="margin-top:4px;">Separate serial numbers with commas.</p>
                     </div>
                     <button id="btn-generate-custom" class="btn btn-primary" style="width:100%;"><i class="fas fa-download"></i> Download Custom (ZIP)</button>
+                </div>
+
+                <div id="mode-live" class="mode-panel">
+                    <div class="input-group">
+                        <label>Type CNIC to Search Live</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-search input-icon"></i>
+                            <input type="text" id="live-cnic" placeholder="Type CNIC number..." autocomplete="off">
+                        </div>
+                        <p class="label-hint" style="margin-top:4px;">Results appear automatically as you type. Partial CNIC match on all applicants.</p>
+                    </div>
+                    <div id="live-results" class="live-results">
+                        <div class="live-results-placeholder">Start typing a CNIC number to see results...</div>
+                    </div>
                 </div>
 
                 <div id="mode-cnic" class="mode-panel">

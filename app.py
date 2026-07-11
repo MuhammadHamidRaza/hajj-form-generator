@@ -96,6 +96,7 @@ def search_by_cnic():
 
     cnic: str = data["cnic"].strip()
     mode: str = data.get("mode", "own")
+    partial: bool = data.get("partial", False)
 
     search_cnic: str = cnic.replace("-", "")
 
@@ -103,24 +104,37 @@ def search_by_cnic():
     if records is None:
         return jsonify({"success": False, "message": "No Excel file loaded."}), 400
 
+    if not search_cnic:
+        return jsonify({"success": True, "mode": mode, "count": 0, "results": []})
+
     results: List[Dict[str, Any]] = []
 
     if mode == "own":
         for i, rec in enumerate(records):
             rec_cnic: str = rec.get("CNIC No.", "").replace("-", "")
-            if rec_cnic and rec_cnic == search_cnic:
-                results.append({"serial_number": i + 1, "applicant": rec})
-                break
+            if rec_cnic:
+                if partial:
+                    if search_cnic in rec_cnic:
+                        results.append({"serial_number": i + 1, "applicant": rec})
+                else:
+                    if rec_cnic == search_cnic:
+                        results.append({"serial_number": i + 1, "applicant": rec})
+                        break
     elif mode == "family":
         for i, rec in enumerate(records):
             leader_cnic: str = rec.get("Family Leader's Cnic Number", "").replace("-", "")
-            if leader_cnic and leader_cnic == search_cnic:
-                results.append({"serial_number": i + 1, "applicant": rec})
+            if leader_cnic:
+                if partial:
+                    if search_cnic in leader_cnic:
+                        results.append({"serial_number": i + 1, "applicant": rec})
+                else:
+                    if leader_cnic == search_cnic:
+                        results.append({"serial_number": i + 1, "applicant": rec})
 
-    if not results:
+    if not results and not partial:
         return jsonify({"success": False, "message": f"No applicant found with CNIC {cnic}."}), 404
 
-    return jsonify({"success": True, "mode": mode, "count": len(results), "results": results})
+    return jsonify({"success": True, "mode": mode, "partial": partial, "count": len(results), "results": results})
 
 
 @app.route("/fetch", methods=["POST"])
