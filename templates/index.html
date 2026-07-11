@@ -50,6 +50,7 @@
                     <button class="mode-tab" data-mode="all">All</button>
                     <button class="mode-tab" data-mode="range">Range</button>
                     <button class="mode-tab" data-mode="custom">Custom</button>
+                    <button class="mode-tab" data-mode="cnic">CNIC</button>
                 </div>
 
                 <div id="mode-single" class="mode-panel active">
@@ -101,6 +102,22 @@
                         <p class="label-hint" style="margin-top:4px;">Separate serial numbers with commas.</p>
                     </div>
                     <button id="btn-generate-custom" class="btn btn-primary" style="width:100%;"><i class="fas fa-download"></i> Download Custom (ZIP)</button>
+                </div>
+
+                <div id="mode-cnic" class="mode-panel">
+                    <div class="cnic-sub-tabs">
+                        <button class="cnic-sub-tab active" data-cnic-mode="own">Own CNIC</button>
+                        <button class="cnic-sub-tab" data-cnic-mode="family">Family / Leader CNIC</button>
+                    </div>
+                    <div class="input-group">
+                        <label>Enter CNIC Number</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-id-card input-icon"></i>
+                            <input type="text" id="cnic-input" placeholder="e.g., 42301-738 or 42301738">
+                        </div>
+                    </div>
+                    <button id="btn-search-cnic" class="btn btn-primary" style="width:100%;"><i class="fas fa-search"></i> Search CNIC</button>
+                    <div id="cnic-results" class="cnic-results"></div>
                 </div>
 
                 <div id="progress-area" class="progress-area">

@@ -88,6 +88,41 @@ def index():
     )
 
 
+@app.route("/search-cnic", methods=["POST"])
+def search_by_cnic():
+    data: Dict[str, Any] = request.get_json()
+    if not data or "cnic" not in data:
+        return jsonify({"success": False, "message": "CNIC number required."}), 400
+
+    cnic: str = data["cnic"].strip()
+    mode: str = data.get("mode", "own")
+
+    search_cnic: str = cnic.replace("-", "")
+
+    records: Optional[List[Dict[str, str]]] = load_excel_data()
+    if records is None:
+        return jsonify({"success": False, "message": "No Excel file loaded."}), 400
+
+    results: List[Dict[str, Any]] = []
+
+    if mode == "own":
+        for i, rec in enumerate(records):
+            rec_cnic: str = rec.get("CNIC No.", "").replace("-", "")
+            if rec_cnic and rec_cnic == search_cnic:
+                results.append({"serial_number": i + 1, "applicant": rec})
+                break
+    elif mode == "family":
+        for i, rec in enumerate(records):
+            leader_cnic: str = rec.get("Family Leader's Cnic Number", "").replace("-", "")
+            if leader_cnic and leader_cnic == search_cnic:
+                results.append({"serial_number": i + 1, "applicant": rec})
+
+    if not results:
+        return jsonify({"success": False, "message": f"No applicant found with CNIC {cnic}."}), 404
+
+    return jsonify({"success": True, "mode": mode, "count": len(results), "results": results})
+
+
 @app.route("/fetch", methods=["POST"])
 def fetch_excel():
     success: bool = fetch_excel_from_url()

@@ -269,4 +269,132 @@ document.addEventListener('DOMContentLoaded', function () {
     elements.modalOverlay.addEventListener('click', function (e) { if (e.target === this) closeModal(); });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && elements.modalOverlay.classList.contains('show')) closeModal(); });
     elements.serialInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); elements.generateBtn.click(); } });
+
+    // ===== CNIC Search =====
+    var cnicInput = document.getElementById('cnic-input');
+    var btnSearchCnic = document.getElementById('btn-search-cnic');
+    var cnicResults = document.getElementById('cnic-results');
+    var cnicSubTabs = document.querySelectorAll('.cnic-sub-tab');
+    var currentCnicMode = 'own';
+
+    cnicSubTabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            cnicSubTabs.forEach(function (t) { t.classList.remove('active'); });
+            this.classList.add('active');
+            currentCnicMode = this.dataset.cnicMode;
+            cnicResults.innerHTML = '';
+            hideStatus();
+        });
+    });
+
+    function renderCnicResults(data) {
+        var html = '';
+        html += '<div class="cnic-results-header">Found ' + data.count + ' result' + (data.count > 1 ? 's' : '') + '</div>';
+
+        if (data.mode === 'own') {
+            var r = data.results[0];
+            var a = r.applicant;
+            var name = (a['Given Name of Applicant'] || '') + ' ' + (a['Surname of Applicant'] || '');
+            html += '<div class="cnic-result-card">';
+            html += '<div class="cnic-result-info">';
+            html += '<div class="cnic-result-row"><span class="cnic-result-label">Serial #</span><span class="cnic-result-value">' + r.serial_number + '</span></div>';
+            html += '<div class="cnic-result-row"><span class="cnic-result-label">Name</span><span class="cnic-result-value">' + name.trim() + '</span></div>';
+            html += '<div class="cnic-result-row"><span class="cnic-result-label">CNIC</span><span class="cnic-result-value">' + (a['CNIC No.'] || '—') + '</span></div>';
+            html += '<div class="cnic-result-row"><span class="cnic-result-label">Passport</span><span class="cnic-result-value">' + (a['Passport No.'] || '—') + '</span></div>';
+            html += '<div class="cnic-result-row"><span class="cnic-result-label">Family #</span><span class="cnic-result-value">' + (a['Family Number'] || '—') + '</span></div>';
+            html += '</div>';
+            html += '<div class="cnic-result-actions">';
+            html += '<button class="btn btn-sm btn-secondary cnic-preview" data-serial="' + r.serial_number + '"><i class="fas fa-eye"></i> Preview</button>';
+            html += '<button class="btn btn-sm btn-primary cnic-generate" data-serial="' + r.serial_number + '"><i class="fas fa-file-pdf"></i> Generate</button>';
+            html += '</div></div>';
+        } else {
+            html += '<div class="cnic-family-table"><table><thead><tr><th>#</th><th>Serial</th><th>Name</th><th>Family #</th><th>CNIC</th><th>Action</th></tr></thead><tbody>';
+            data.results.forEach(function (r, idx) {
+                var a = r.applicant;
+                var name = (a['Given Name of Applicant'] || '') + ' ' + (a['Surname of Applicant'] || '');
+                html += '<tr>';
+                html += '<td>' + (idx + 1) + '</td>';
+                html += '<td>' + r.serial_number + '</td>';
+                html += '<td>' + name.trim() + '</td>';
+                html += '<td>' + (a['Family Number'] || '—') + '</td>';
+                html += '<td>' + (a['CNIC No.'] || '—') + '</td>';
+                html += '<td><button class="btn btn-sm btn-primary cnic-generate" data-serial="' + r.serial_number + '" style="flex:none;padding:6px 12px;font-size:12px;"><i class="fas fa-file-pdf"></i> PDF</button></td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table></div>';
+            var serials = data.results.map(function (r) { return r.serial_number; });
+            html += '<button class="btn btn-primary cnic-generate-all" data-serials="' + JSON.stringify(serials) + '" style="margin-top:16px;width:100%;"><i class="fas fa-download"></i> Download All (' + data.count + ' PDFs)</button>';
+        }
+
+        cnicResults.innerHTML = html;
+        cnicResults.classList.add('show');
+    }
+
+    btnSearchCnic.addEventListener('click', function () {
+        var cnic = cnicInput.value.trim();
+        if (!cnic) { showStatus('warning', 'fas fa-exclamation-triangle', 'Please enter a CNIC number.'); return; }
+        hideStatus();
+        showSpinner('Searching...');
+        fetch('/search-cnic', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cnic: cnic, mode: currentCnicMode }),
+        })
+            .then(function (r) { return r.json().then(function (d) { return { status: r.status, data: d }; }); })
+            .then(function (r) {
+                hideSpinner();
+                cnicResults.classList.remove('show');
+                if (r.data.success) {
+                    renderCnicResults(r.data);
+                } else {
+                    showStatus('error', 'fas fa-exclamation-circle', r.data.message);
+                }
+            })
+            .catch(function () { hideSpinner(); showStatus('error', 'fas fa-exclamation-circle', 'Search failed.'); });
+    });
+
+    cnicInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); btnSearchCnic.click(); } });
+
+    document.addEventListener('click', function (e) {
+        var previewBtn = e.target.closest('.cnic-preview');
+        if (previewBtn) {
+            var serial = previewBtn.dataset.serial;
+            elements.serialInput.value = serial;
+            switchMode('single');
+            elements.previewBtn.click();
+        }
+
+        var genBtn = e.target.closest('.cnic-generate');
+        if (genBtn) {
+            var serial = parseInt(genBtn.dataset.serial, 10);
+            if (!isNaN(serial)) {
+                hideStatus();
+                hideDownload();
+                showSpinner('Generating PDF...');
+                fetch('/generate', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ serial_number: serial }),
+                })
+                    .then(function (r) { return r.json().then(function (d) { return { status: r.status, data: d }; }); })
+                    .then(function (r) {
+                        hideSpinner();
+                        if (r.data.success) {
+                            showStatus('success', 'fas fa-check-circle', r.data.message);
+                            showDownload(r.data.filename);
+                        } else {
+                            showStatus('error', 'fas fa-exclamation-circle', r.data.message);
+                        }
+                    })
+                    .catch(function () { hideSpinner(); showStatus('error', 'fas fa-exclamation-circle', 'Failed.'); });
+            }
+        }
+
+        var genAllBtn = e.target.closest('.cnic-generate-all');
+        if (genAllBtn) {
+            var serials;
+            try { serials = JSON.parse(genAllBtn.dataset.serials); } catch (ex) { return; }
+            if (serials && serials.length) {
+                triggerBulkDownload(serials, 'family');
+            }
+        }
+    });
 });
